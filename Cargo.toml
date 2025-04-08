@@ -12,3 +12,9 @@ dotenv = "*"
 lazy_static = "1.5.0"
 serde = { version = "1.0.219", features = ["derive"] }
 actix-files = "0.6.6"
+governor = "0.10.0"
+nonzero_ext = "0.3.0"
+http-cache-reqwest = "0.15.1"
+strum = { version = "0.27.1", features = ["derive"] }
+thiserror = "2.0.12"
+sqlx = { version = "0.8.3", features = ["runtime-async-std"] }

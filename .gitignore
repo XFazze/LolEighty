@@ -1,3 +1,4 @@
 /target
 /static/ddragon
 .env.secret
+.html.min.js

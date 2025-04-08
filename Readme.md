@@ -2,22 +2,28 @@
 
 League of legends(lol) profile website.
 
-## Features
+## Features/Goal
 
 - Profile history
 - Profile stats
+
+- General statictics
+- Trivia
+- Drafting
 
 ## Necessary secrets
 
 - .env.secret file
 - RIOT_API_KEY
+- /static/htmx.min.js (<https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js>)
+- /staic/ddragon (<https://ddragon.leagueoflegends.com/cdn/dragontail-12.6.1.tgz>)
 
 ## Dependencies
 
 - Web server: Actix web (<https://actix.rs/docs>)
 - HTML templating engine: Tera (<https://docs.rs/tera/latest/tera/>)
 - HTML interactivity: Htmx (<https://htmx.org/>)
-- OpenSSL
+- Sqlx (<https://docs.rs/sqlx/latest/sqlx/>)
 
 ## Development
 
@@ -27,15 +33,16 @@ To run server while watching: `watchexec -w src -r cargo run`
 
 ## Todo
 
-- Rank display
-- Rank graph?
-- Rank history?
-- Match history
 - DATABASE!
+- Docker!
+- Tests!
+- Css & Styling
+
 - Past 30 performance
 - Champion performance
 - Teamate performance
 - Pings
+
 - Detailed user stat page
 - Tags
 - Account & match notes

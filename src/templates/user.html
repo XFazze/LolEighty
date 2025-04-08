@@ -1,5 +1,29 @@
 {% extends "base.html" %} {%block content%}
-<p>User page!</p>
-<img src="/static/ddragon/12.6.1/img/profileicon/{{ profile_icon_id }}.png" alt="profile icon">
-<p>{{ region }} - {{ name }}#{{ tag }}</p>
+<div class="f-switch">
+  <img src="/static/ddragon/12.6.1/img/profileicon/{{ profile_icon_id }}.png" alt="profile icon">
+  <div>
+    <p>{{ region }} - {{ name }}#{{ tag }}</p>
+    <p> lvl {{ lvl }} </p>
+    {% for rank in league_v4s %}
+    <p>
+      {{ rank.queueType }}:
+    </p>
+    <p>
+      {{ rank.tier }} {{ rank.rank }} {{ rank.leaguePoints }} LP - {{ 100*(rank.wins/(rank.losses+rank.wins))|round }}% {{ rank.wins }}W {{ rank.losses }}L
+    </p>
+
+    {% endfor %}
+
+  </div>
+
+</div>
+<div>
+  {% for match in matches %}
+  <div hx-get="/match/{{ large_region }}/{{ match }}" hx-trigger="load">
+    Match id:{{ match }}
+
+  </div>
+  {% endfor %}
+
+</div>
 {%endblock content%}

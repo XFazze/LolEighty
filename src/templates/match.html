@@ -1,0 +1,48 @@
+<div class="f-switch" style="border: 2px solid black;">
+  <div>
+    <p>{{ lol_match.info.gameMode }}</p>
+    <p>{{ now() | date(format="%m-%d %H:%M") }}</p>
+    <p>{{ lol_match.info.gameDuration/60 |round }}m</p>
+  </div>
+  <div>
+    {% for p in lol_match.info.participants | slice(end=5) %}
+    <div style="display:flex;flex-direction: row; align-items: center; ">
+
+      {% if p.championName == "FiddleSticks" %}
+      <img src="/static/ddragon/12.6.1/img/champion/Fiddlesticks.png" style="width:50px; height: 50px;" alt="profile icon">
+      {% else %}
+      <img src="/static/ddragon/12.6.1/img/champion/{{ p.championName }}.png" style="width:50px; height: 50px;" alt="profile icon">
+      {% endif %}
+      <div>
+        <p>
+          {{ p.riotIdGameName }}#{{ p.riotIdTagline }}</p>
+        <p>
+          {{ p.kills }}/{{ p.deaths }}/{{ p.assists }}
+        </p>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+  <div>
+    {% for p in lol_match.info.participants | slice(start=5) %}
+    <div style="display:flex;flex-direction: row; align-items: center; ">
+
+      {% if p.championName == "FiddleSticks" %}
+      <img src="/static/ddragon/12.6.1/img/champion/Fiddlesticks.png" style="width:50px; height: 50px;" alt="profile icon">
+      {% else %}
+      <img src="/static/ddragon/12.6.1/img/champion/{{ p.championName }}.png" style="width:50px; height: 50px;" alt="profile icon">
+      {% endif %}
+      <div>
+        <p>
+          {{ p.riotIdGameName }}#{{ p.riotIdTagline }}</p>
+        <p>
+          {{ p.kills }}/{{ p.deaths }}/{{ p.assists }}
+        </p>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+</div>
