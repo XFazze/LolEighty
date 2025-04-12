@@ -7,12 +7,12 @@ COPY Cargo.toml ./
 COPY src/* src/
 COPY static/* static/
 
+
 RUN apt-get update
 RUN apt-get install -y pkg-config libssl-dev perl make
 
-RUN cargo check 
-RUN cargo install watchexec-cli  
+RUN cargo build --release
 
 EXPOSE 8080
 
-CMD ["watchexec", "-w", "src", "-r", "cargo", "run", "default-run"]
+CMD ["./target/release/lolepic"]

@@ -1,15 +1,15 @@
 use actix_web::{get, post, web, web::Redirect, App, HttpResponse, HttpServer, Responder};
 use riot_api::{LargeRegion, LeagueV4, MatchV5Match, Region};
-use strum::IntoEnumIterator;
 use std::{env, str::FromStr};
+use strum::IntoEnumIterator;
 extern crate dotenv;
 use dotenv::dotenv;
+use governor::{DefaultDirectRateLimiter, Quota, RateLimiter};
 use lazy_static::lazy_static;
-use serde::Deserialize;
-use tera::Tera;
-use std::sync::Arc;
-use governor::{ DefaultDirectRateLimiter, Quota, RateLimiter};
 use nonzero_ext::nonzero;
+use serde::Deserialize;
+use std::sync::Arc;
+use tera::Tera;
 
 mod riot_api;
 pub use riot_api::{AccountV1, SummonerV4};
@@ -24,12 +24,11 @@ lazy_static! {
 #[derive(Clone)]
 pub struct RiotRatelimiters {
     short_ratelimit: Arc<DefaultDirectRateLimiter>,
-    long_ratelimit:  Arc<DefaultDirectRateLimiter>
-
+    long_ratelimit: Arc<DefaultDirectRateLimiter>,
 }
 pub struct AppState {
     reqwest_client: Arc<reqwest::Client>,
-    riot_ratelimiters:RiotRatelimiters
+    riot_ratelimiters: RiotRatelimiters,
 }
 
 #[get("/")]
@@ -37,16 +36,14 @@ async fn index() -> impl Responder {
     let mut context = tera::Context::new();
     context.insert("user", "Me moi");
     let mut regions = Vec::new();
-    for r in Region::iter(){
+    for r in Region::iter() {
         regions.push(format!("{:?}", r));
-    };
-    context.insert("regions", &regions );
-    match TEMPLATES.render("index.html", &context){
-        Ok(page_contents) =>{
-            HttpResponse::Ok().body(page_contents)
-        }
-        Err(e)=>{ 
-            println!("{:?}",e);
+    }
+    context.insert("regions", &regions);
+    match TEMPLATES.render("index.html", &context) {
+        Ok(page_contents) => HttpResponse::Ok().body(page_contents),
+        Err(e) => {
+            println!("{:?}", e);
             HttpResponse::NotFound().finish()
         }
     }
@@ -67,20 +64,20 @@ async fn user_loopup(web::Form(form): web::Form<UserForm>) -> impl Responder {
 }
 
 #[get("/user/{region}/{name}/{tag}")]
-async fn user(path: web::Path<(String, String, String)>, data: web::Data<AppState>) -> impl Responder {
+async fn user(
+    path: web::Path<(String, String, String)>,
+    data: web::Data<AppState>,
+) -> impl Responder {
     let (region_as_str, name, tag) = path.into_inner();
     //println!("user: {} - {} - {}", region_as_str, name, tag);
     let region;
     match Region::from_str(&region_as_str) {
-        Ok(success) => {
-            region = success
-        }
-        Err(_) =>{
+        Ok(success) => region = success,
+        Err(_) => {
             let mut context = tera::Context::new();
             context.insert("error_message", "Region doesnt exists");
             let page_contents = TEMPLATES.render("error.html", &context).unwrap();
             return HttpResponse::Ok().body(page_contents);
-
         }
     }
     let large_region = match region {
@@ -103,13 +100,20 @@ async fn user(path: web::Path<(String, String, String)>, data: web::Data<AppStat
     };
     println!("user: {} - {} - {} - {}", large_region, region, name, tag);
 
-
     let account_v1: AccountV1;
-    match riot_api::account_v1(data.reqwest_client.clone(), data.riot_ratelimiters.clone(),&large_region, &name, &tag).await {
+    match riot_api::account_v1(
+        data.reqwest_client.clone(),
+        data.riot_ratelimiters.clone(),
+        &large_region,
+        &name,
+        &tag,
+    )
+    .await
+    {
         Ok(success) => {
             account_v1 = success;
         }
-        Err(_err)=>{
+        Err(_err) => {
             let mut context = tera::Context::new();
             context.insert("error_message", "Riot won't answer");
             let page_contents = TEMPLATES.render("error.html", &context).unwrap();
@@ -118,24 +122,38 @@ async fn user(path: web::Path<(String, String, String)>, data: web::Data<AppStat
     }
 
     let summoner_v4: SummonerV4;
-    match riot_api::summoner_v4(data.reqwest_client.clone(), data.riot_ratelimiters.clone(), &region,&account_v1.puuid).await {
+    match riot_api::summoner_v4(
+        data.reqwest_client.clone(),
+        data.riot_ratelimiters.clone(),
+        &region,
+        &account_v1.puuid,
+    )
+    .await
+    {
         Ok(success) => {
             summoner_v4 = success;
         }
-        Err(_err)=>{
+        Err(_err) => {
             let mut context = tera::Context::new();
             context.insert("error_message", "Riot is confusing");
             let page_contents = TEMPLATES.render("error.html", &context).unwrap();
             return HttpResponse::Ok().body(page_contents);
         }
     }
-    
+
     let league_v4s: Vec<LeagueV4>;
-    match riot_api::league_v4(data.reqwest_client.clone(), data.riot_ratelimiters.clone(), &region, &account_v1.puuid).await {
+    match riot_api::league_v4(
+        data.reqwest_client.clone(),
+        data.riot_ratelimiters.clone(),
+        &region,
+        &account_v1.puuid,
+    )
+    .await
+    {
         Ok(success) => {
             league_v4s = success;
         }
-        Err(_err)=>{
+        Err(_err) => {
             let mut context = tera::Context::new();
             context.insert("error_message", "Riot is confusing");
             let page_contents = TEMPLATES.render("error.html", &context).unwrap();
@@ -144,11 +162,18 @@ async fn user(path: web::Path<(String, String, String)>, data: web::Data<AppStat
     }
 
     let matches: Vec<String>;
-    match riot_api::match_v5_matchlist(data.reqwest_client.clone(), data.riot_ratelimiters.clone(), &large_region, &account_v1.puuid).await {
+    match riot_api::match_v5_matchlist(
+        data.reqwest_client.clone(),
+        data.riot_ratelimiters.clone(),
+        &large_region,
+        &account_v1.puuid,
+    )
+    .await
+    {
         Ok(success) => {
             matches = success;
         }
-        Err(_err)=>{
+        Err(_err) => {
             let mut context = tera::Context::new();
             context.insert("error_message", "Riot is confusing");
             let page_contents = TEMPLATES.render("error.html", &context).unwrap();
@@ -165,45 +190,44 @@ async fn user(path: web::Path<(String, String, String)>, data: web::Data<AppStat
     context.insert("lvl", &summoner_v4.summoner_level);
     context.insert("league_v4s", &league_v4s);
     context.insert("matches", &matches);
-    
 
-    match TEMPLATES.render("user.html", &context){
-        Ok(page_contents) =>{
-            HttpResponse::Ok().body(page_contents)
-        }
-        Err(e)=>{ 
-            println!("{:?}",e);
+    match TEMPLATES.render("user.html", &context) {
+        Ok(page_contents) => HttpResponse::Ok().body(page_contents),
+        Err(e) => {
+            println!("{:?}", e);
             HttpResponse::NotFound().finish()
         }
     }
 }
 
-
 #[get("/match/{large_region}/{match_id}")]
 async fn lol_match(path: web::Path<(String, String)>, data: web::Data<AppState>) -> impl Responder {
     let (large_region_as_str, match_id) = path.into_inner();
-    let large_region; 
+    let large_region;
     match LargeRegion::from_str(&large_region_as_str) {
-        Ok(success) => {
-            large_region = success
-        }
-        Err(_) =>{
+        Ok(success) => large_region = success,
+        Err(_) => {
             let mut context = tera::Context::new();
             context.insert("error_message", "Large region doesnt exists");
             let page_contents = TEMPLATES.render("error.html", &context).unwrap();
             return HttpResponse::Ok().body(page_contents);
-
         }
     }
     println!("{:?}", match_id);
 
-
     let lol_match: MatchV5Match;
-    match riot_api::match_v5_match(data.reqwest_client.clone(), data.riot_ratelimiters.clone(), &large_region, &match_id).await {
+    match riot_api::match_v5_match(
+        data.reqwest_client.clone(),
+        data.riot_ratelimiters.clone(),
+        &large_region,
+        &match_id,
+    )
+    .await
+    {
         Ok(success) => {
             lol_match = success;
         }
-        Err(_err)=>{
+        Err(_err) => {
             let mut context = tera::Context::new();
             context.insert("error_message", "Riot is confusing");
             let page_contents = TEMPLATES.render("error.html", &context).unwrap();
@@ -214,15 +238,12 @@ async fn lol_match(path: web::Path<(String, String)>, data: web::Data<AppState>)
     let mut context = tera::Context::new();
     context.insert("match_id", &match_id);
     context.insert("lol_match", &lol_match);
-    
 
-    match TEMPLATES.render("match.html", &context){
-        Ok(page_contents) =>{
-             HttpResponse::Ok().body(page_contents)
-        }
-        Err(e)=>{ 
-            println!("{:?}",e);
-             HttpResponse::NotFound().finish()
+    match TEMPLATES.render("match.html", &context) {
+        Ok(page_contents) => HttpResponse::Ok().body(page_contents),
+        Err(e) => {
+            println!("{:?}", e);
+            HttpResponse::NotFound().finish()
         }
     }
 }
@@ -232,14 +253,21 @@ async fn main() -> std::io::Result<()> {
     dotenv::from_filename(".env.secret").ok();
     dotenv().ok();
     let _riot_api_key = env::var("RIOT_API_KEY").expect("RIOT_API_KEY not set in .env");
+
+    //let postgres_url = env::var("POSTGRES_URL").expect("POSTGRES_URL not set in .env");
+    //let postgres_pool = sqlx::PgPool::connect(&postgres_url).await?;
     HttpServer::new(|| {
         App::new()
             .app_data(web::Data::new(AppState {
                 reqwest_client: Arc::new(reqwest::Client::new()),
-                riot_ratelimiters:RiotRatelimiters{
-                    short_ratelimit: Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(20u32)))),
-                    long_ratelimit: Arc::new(RateLimiter::direct(Quota::per_minute(nonzero!(120u32))))
-                }
+                riot_ratelimiters: RiotRatelimiters {
+                    short_ratelimit: Arc::new(RateLimiter::direct(Quota::per_second(nonzero!(
+                        20u32
+                    )))),
+                    long_ratelimit: Arc::new(RateLimiter::direct(Quota::per_minute(nonzero!(
+                        120u32
+                    )))),
+                },
             }))
             .service(
                 actix_files::Files::new("/static", "./static")
@@ -250,8 +278,8 @@ async fn main() -> std::io::Result<()> {
             .service(user_loopup)
             .service(user)
             .service(lol_match)
-        })
-    .bind(("127.0.0.1", 8080))?
+    })
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }

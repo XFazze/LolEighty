@@ -1,29 +1,37 @@
-version: "3"
 services:
   app:
-    build: Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     restart: always
     ports:
-      - "8083:8080"
+      - "8080:8080"
     env_file:
       - .env
       - .env.secret
     depends_on:
-      - postgres
-    networks:
-      - lolepic-postgres
+      postgres:
+        condition: service_started
+      postgres-init:
+        condition: service_completed_successfully
+    profiles:
+      - prod
   dev-app:
-    build: Dockerfile.dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
-      - "8083:8080"
+      - "8080:8080"
     env_file:
       - .env
       - .env.secret
     depends_on:
       - postgres
-    networks:
-      - lolepic-postgres
-    profiles: dev
+    volumes:
+      - ./:/app
+      - /target
+    profiles:
+      - dev
 
   postgres:
     image: postgres
@@ -31,23 +39,29 @@ services:
     env_file:
       - .env
       - .env.secret
-    networks:
-      - lolepic-postgres
     volumes:
-      - ${PWD}/db-data/:/var/lib/postgresql/data/
-  pgadmin:
-    image: dpage/pgadmin4:4.23
-    restart: always
+      - ${PWD}/postgres-data/:/var/lib/postgresql/data/
+
+  postgres-sqlx:
+    build:
+      context: .
+      dockerfile: Dockerfile.sqlx_user
+    stdin_open: true # docker run -i
+    tty: true # docker run -t
     env_file:
       - .env
       - .env.secret
-    environment:
-    ports:
-      - 15432:80
-    volumes:
-      - pgadmin:/var/lib/pgadmin
     depends_on:
       - postgres
+    profiles:
+      - disabled
 
-networks:
-  lolepic-postgres:
+  postgres-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres-init
+    env_file:
+      - .env
+      - .env.secret
+    depends_on:
+      - postgres

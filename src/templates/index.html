@@ -1,8 +1,8 @@
 {% extends "base.html" %} {%block content%}
-<p>Index page!</p>
+<p>Index page!!</p>
 <form action="/user_lookup" method="post">
   <select name="region" id="region">
-    {% for region in regions %} <option value="{{ region }}">{{ region }}</option> {% endfor %}
+    {% for region in regions %} <option value="{{ region }}" {% if region=="Euw1" %} selected="selected" {% endif %}>{{ region }}</option> {% endfor %}
   </select>
   <input name="full_name" type="text" minlength="3" maxlength="16" placeholder="name#tag">
 

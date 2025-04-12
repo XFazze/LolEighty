@@ -1,14 +1,21 @@
 use governor::Jitter;
-use serde::{de::{self}, Deserialize, Serialize};
-use std::{env::{self, VarError}, fmt, time::Duration};
 use reqwest::header::USER_AGENT;
+use serde::{
+    de::{self},
+    Deserialize, Serialize,
+};
 use std::sync::Arc;
+use std::{
+    env::{self, VarError},
+    fmt,
+    time::Duration,
+};
 use strum::{EnumIter, EnumString};
 
 use crate::RiotRatelimiters;
 
 #[derive(Debug, EnumString, Serialize, EnumIter)]
-pub enum Region{
+pub enum Region {
     Br1,
     Eun1,
     Euw1,
@@ -24,7 +31,7 @@ pub enum Region{
     Sg2,
     Th2,
     Tw2,
-    Vn2
+    Vn2,
 }
 impl fmt::Display for Region {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -33,11 +40,11 @@ impl fmt::Display for Region {
 }
 
 #[derive(Debug, EnumString, Serialize)]
-pub enum LargeRegion{
+pub enum LargeRegion {
     Americas,
     Asia,
     Europe,
-    Sea
+    Sea,
 }
 impl fmt::Display for LargeRegion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -46,29 +53,38 @@ impl fmt::Display for LargeRegion {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum RiotApiError{
+pub enum RiotApiError {
     #[error("Enviromental variable RIOT_API_KEY")]
     EnviromentalVariableError(#[from] VarError),
     #[error("Riot api error")]
-    RiotApiError(#[from] reqwest::Error)
+    RiotApiError(#[from] reqwest::Error),
 }
 
-async fn riot_request<T: de::DeserializeOwned>(reqwest_client:Arc<reqwest::Client>, riot_ratelimiters:RiotRatelimiters, request_url:&str) -> Result<T, reqwest::Error>{
-    while riot_ratelimiters.long_ratelimit.check().is_err(){
-        riot_ratelimiters.long_ratelimit.until_ready_with_jitter(Jitter::new(Duration::from_secs(1),Duration::from_secs(1))).await;
-    };
-    while riot_ratelimiters.short_ratelimit.check().is_err(){
-        riot_ratelimiters.short_ratelimit.until_ready_with_jitter(Jitter::new(Duration::from_secs(1),Duration::from_secs(1))).await;
-    };
-    return reqwest_client.get(request_url)
+async fn riot_request<T: de::DeserializeOwned>(
+    reqwest_client: Arc<reqwest::Client>,
+    riot_ratelimiters: RiotRatelimiters,
+    request_url: &str,
+) -> Result<T, reqwest::Error> {
+    while riot_ratelimiters.long_ratelimit.check().is_err() {
+        riot_ratelimiters
+            .long_ratelimit
+            .until_ready_with_jitter(Jitter::new(Duration::from_secs(1), Duration::from_secs(1)))
+            .await;
+    }
+    while riot_ratelimiters.short_ratelimit.check().is_err() {
+        riot_ratelimiters
+            .short_ratelimit
+            .until_ready_with_jitter(Jitter::new(Duration::from_secs(1), Duration::from_secs(1)))
+            .await;
+    }
+    return reqwest_client
+        .get(request_url)
         .header(USER_AGENT, "rust-web-api-client") // gh api requires a user-agent header
         .send()
         .await?
         .json()
-        .await
+        .await;
 }
-
-
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -79,16 +95,22 @@ pub struct AccountV1 {
     pub tag_line: String,
 }
 
-
-pub async fn account_v1(reqwest_client: Arc<reqwest::Client>, riot_ratelimiters:RiotRatelimiters,large_region:&LargeRegion, gamename: &str, tagline: &str) -> Result<AccountV1,  RiotApiError> {
+pub async fn account_v1(
+    reqwest_client: Arc<reqwest::Client>,
+    riot_ratelimiters: RiotRatelimiters,
+    large_region: &LargeRegion,
+    gamename: &str,
+    tagline: &str,
+) -> Result<AccountV1, RiotApiError> {
     let _riot_api_key = env::var("RIOT_API_KEY")?;
     let request_url = format!(
         "https://{}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{}/{}?api_key={}",
         large_region, gamename, tagline, _riot_api_key
     );
     //println!("account_v1 request_url: {}", request_url);
-    let account_v1 = riot_request::<AccountV1>(reqwest_client, riot_ratelimiters, &request_url).await;
-   
+    let account_v1 =
+        riot_request::<AccountV1>(reqwest_client, riot_ratelimiters, &request_url).await;
+
     //println!("{:?}", account_v1);
     Ok(account_v1?)
 }
@@ -133,31 +155,37 @@ pub async fn account_v1(reqwest_client: Arc<reqwest::Client>, riot_ratelimiters:
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct LeagueV4{
-    pub league_id:String,
-    pub queue_type:String,
-    pub tier:String,
-    pub rank:String,
-    pub summoner_id:String,
-    pub puuid:String,
-    pub league_points:i32,
-    pub wins:i32,
-    pub losses:i32,
-    pub veteran:bool,
-    pub inactive:bool,
-    pub fresh_blood:bool,
-    pub hot_streak:bool,
+pub struct LeagueV4 {
+    pub league_id: String,
+    pub queue_type: String,
+    pub tier: String,
+    pub rank: String,
+    pub summoner_id: String,
+    pub puuid: String,
+    pub league_points: i32,
+    pub wins: i32,
+    pub losses: i32,
+    pub veteran: bool,
+    pub inactive: bool,
+    pub fresh_blood: bool,
+    pub hot_streak: bool,
 }
 
-pub async fn league_v4(reqwest_client: Arc<reqwest::Client>, riot_ratelimiters:RiotRatelimiters, region:&Region, puuid: &str) ->  Result<Vec<LeagueV4>, RiotApiError>{
+pub async fn league_v4(
+    reqwest_client: Arc<reqwest::Client>,
+    riot_ratelimiters: RiotRatelimiters,
+    region: &Region,
+    puuid: &str,
+) -> Result<Vec<LeagueV4>, RiotApiError> {
     let _riot_api_key = env::var("RIOT_API_KEY")?;
     let request_url = format!(
         "https://{}.api.riotgames.com/lol/league/v4/entries/by-puuid/{}?api_key={}",
         region, puuid, _riot_api_key
     );
     //println!("account_v1 request_url: {}", request_url);
-    let league_v4s = riot_request::<Vec<LeagueV4>>(reqwest_client, riot_ratelimiters, &request_url).await;
-   
+    let league_v4s =
+        riot_request::<Vec<LeagueV4>>(reqwest_client, riot_ratelimiters, &request_url).await;
+
     //println!("{:?}", league_v4s);
     Ok(league_v4s?)
 }
@@ -168,19 +196,24 @@ pub async fn league_v4(reqwest_client: Arc<reqwest::Client>, riot_ratelimiters:R
 
 //pub async fn lol_status_v4() {}
 
-pub async fn match_v5_matchlist(reqwest_client: Arc<reqwest::Client>,  riot_ratelimiters:RiotRatelimiters, large_region:&LargeRegion, puuid: &str) -> Result<Vec<String>, RiotApiError>{
+pub async fn match_v5_matchlist(
+    reqwest_client: Arc<reqwest::Client>,
+    riot_ratelimiters: RiotRatelimiters,
+    large_region: &LargeRegion,
+    puuid: &str,
+) -> Result<Vec<String>, RiotApiError> {
     let _riot_api_key = env::var("RIOT_API_KEY")?;
     let request_url = format!(
         "https://{}.api.riotgames.com/lol/match/v5/matches/by-puuid/{}/ids?start=0&count=5&api_key={}",
         large_region, puuid, _riot_api_key
     );
     //println!("account_v1 request_url: {}", request_url);
-    let match_v5_matchlist = riot_request::<Vec<String>>(reqwest_client, riot_ratelimiters, &request_url).await;
-   
+    let match_v5_matchlist =
+        riot_request::<Vec<String>>(reqwest_client, riot_ratelimiters, &request_url).await;
+
     //println!("{:?}", match_v5_matchlist);
     Ok(match_v5_matchlist?)
 }
-
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -429,16 +462,21 @@ pub struct ObjectiveDto {
     pub kills: i32,
 }
 
-
-pub async fn match_v5_match(reqwest_client: Arc<reqwest::Client>,  riot_ratelimiters:RiotRatelimiters, large_region:&LargeRegion, match_id: &str) -> Result<MatchV5Match,  RiotApiError>{
+pub async fn match_v5_match(
+    reqwest_client: Arc<reqwest::Client>,
+    riot_ratelimiters: RiotRatelimiters,
+    large_region: &LargeRegion,
+    match_id: &str,
+) -> Result<MatchV5Match, RiotApiError> {
     let _riot_api_key = env::var("RIOT_API_KEY")?;
     let request_url = format!(
         "https://{}.api.riotgames.com/lol/match/v5/matches/{}?api_key={}",
         large_region, match_id, _riot_api_key
     );
     //println!("account_v1 request_url: {}", request_url);
-    let match_v5_match = riot_request::<MatchV5Match>(reqwest_client, riot_ratelimiters, &request_url).await;
-   
+    let match_v5_match =
+        riot_request::<MatchV5Match>(reqwest_client, riot_ratelimiters, &request_url).await;
+
     //println!("{:?}", match_v5_match);
     Ok(match_v5_match?)
 }
@@ -458,15 +496,20 @@ pub struct SummonerV4 {
     pub puuid: String,
     pub summoner_level: u64,
 }
-pub async fn summoner_v4(reqwest_client: Arc<reqwest::Client>,  riot_ratelimiters:RiotRatelimiters, region:&Region, puuid: &str) -> Result<SummonerV4, RiotApiError>{
+pub async fn summoner_v4(
+    reqwest_client: Arc<reqwest::Client>,
+    riot_ratelimiters: RiotRatelimiters,
+    region: &Region,
+    puuid: &str,
+) -> Result<SummonerV4, RiotApiError> {
     let _riot_api_key = env::var("RIOT_API_KEY")?;
     let request_url = format!(
         "https://{}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/{}?api_key={}",
         region, puuid, _riot_api_key
     );
     //println!("summoner_v4 request_url: {}", request_url);
-    let summoner_v4 = riot_request::<SummonerV4>(reqwest_client, riot_ratelimiters,  &request_url).await;
-
+    let summoner_v4 =
+        riot_request::<SummonerV4>(reqwest_client, riot_ratelimiters, &request_url).await;
 
     //println!("{:?}", summoner_v4);
     Ok(summoner_v4?)

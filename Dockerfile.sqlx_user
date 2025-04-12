@@ -1,0 +1,13 @@
+FROM rust:1.86.0-slim-bookworm
+
+WORKDIR /
+
+
+COPY /migrations migrations
+
+RUN apt-get update
+RUN apt-get install -y pkg-config libssl-dev
+#RUN cargo install sqlx-cli --features openssl-vendored
+RUN cargo install sqlx-cli 
+
+CMD ["/bin/bash"]

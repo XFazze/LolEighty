@@ -2,3 +2,4 @@
 /static/ddragon
 .env.secret
 .html.min.js
+/postgres-data

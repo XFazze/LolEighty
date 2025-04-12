@@ -1,11 +1,17 @@
 [package]
-name = "loleighty"
+name = "lolepic"
 version = "0.1.0"
 edition = "2021"
+
+#[[bin]]
+#name = "lolepic"
+#path = "src/main.rs"
+
 
 [dependencies]
 reqwest = { version = "0.12.15", features = ["json"] }
 openssl = { version = "0.10", features = ["vendored"] }
+#openssl = "0.10"
 actix-web = "4"
 tera = "1.20"
 dotenv = "*"
@@ -17,4 +23,4 @@ nonzero_ext = "0.3.0"
 http-cache-reqwest = "0.15.1"
 strum = { version = "0.27.1", features = ["derive"] }
 thiserror = "2.0.12"
-sqlx = { version = "0.8.3", features = ["runtime-async-std"] }
+sqlx = { version = "0.8.3", features = ["postgres", "runtime-async-std"] }
